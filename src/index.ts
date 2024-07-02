@@ -1,18 +1,29 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Bind resources to your worker in `wrangler.toml`. After adding bindings, a type definition for the
- * `Env` object can be regenerated with `npm run cf-typegen`.
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
+import { Hono } from 'hono';
 
-export default {
-	async fetch(request, env, ctx): Promise<Response> {
-		return new Response('Hello World!');
-	},
-} satisfies ExportedHandler<Env>;
+type Bindings = {
+	[key in keyof CloudflareBindings]: CloudflareBindings[key];
+};
+
+const app = new Hono<{ Bindings: Bindings }>();
+
+app.get('/', async (c) => {
+	// TODO: make this generate automatically
+	return c.html(`
+		<h1>AI Error Explorer</h1>
+		<a href="/no-such-model">No Such Model</a>
+	`);
+});
+
+app.get('/no-such-model', async (c) => {
+	let response;
+	try {
+		response = await c.env.AI.run('@cf/this/is/not/real', {
+			prompt: 'jklol',
+		});
+	} catch (err) {
+		return c.json({ err, t: typeof err});
+	}
+	return c.json({ success: true, response });
+});
+
+export default app;
